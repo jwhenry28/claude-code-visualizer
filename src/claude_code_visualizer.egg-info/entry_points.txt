@@ -1,0 +1,2 @@
+[console_scripts]
+claude-visualizer = visualizer.cli:main
