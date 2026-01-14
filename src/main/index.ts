@@ -1,5 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { join, dirname, basename } from 'path'
 import { readdir, readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
 
@@ -112,6 +112,25 @@ ipcMain.handle('list-sessions', async (_, projectPath: string) => {
 
 ipcMain.handle('read-session', async (_, sessionPath: string) => {
   return readSession(sessionPath)
+})
+
+ipcMain.handle('check-subagent-exists', async (_, sessionPath: string, agentId: string) => {
+  const dir = dirname(sessionPath)
+  const sessionId = basename(sessionPath, '.jsonl')
+  const subagentPath = join(dir, sessionId, 'subagents', `agent-${agentId}.jsonl`)
+  try {
+    await stat(subagentPath)
+    return true
+  } catch {
+    return false
+  }
+})
+
+ipcMain.handle('read-subagent-session', async (_, sessionPath: string, agentId: string) => {
+  const dir = dirname(sessionPath)
+  const sessionId = basename(sessionPath, '.jsonl')
+  const subagentPath = join(dir, sessionId, 'subagents', `agent-${agentId}.jsonl`)
+  return readSession(subagentPath)
 })
 
 app.whenReady().then(() => {

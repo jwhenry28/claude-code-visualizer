@@ -14,7 +14,11 @@ export interface Session {
 const api = {
   listProjects: (): Promise<Project[]> => ipcRenderer.invoke('list-projects'),
   listSessions: (projectPath: string): Promise<Session[]> => ipcRenderer.invoke('list-sessions', projectPath),
-  readSession: (sessionPath: string): Promise<unknown[]> => ipcRenderer.invoke('read-session', sessionPath)
+  readSession: (sessionPath: string): Promise<unknown[]> => ipcRenderer.invoke('read-session', sessionPath),
+  checkSubagentExists: (sessionPath: string, agentId: string): Promise<boolean> =>
+    ipcRenderer.invoke('check-subagent-exists', sessionPath, agentId),
+  readSubagentSession: (sessionPath: string, agentId: string): Promise<unknown[]> =>
+    ipcRenderer.invoke('read-subagent-session', sessionPath, agentId)
 }
 
 contextBridge.exposeInMainWorld('api', api)

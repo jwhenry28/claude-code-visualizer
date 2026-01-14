@@ -91,6 +91,23 @@ electron.ipcMain.handle("list-sessions", async (_, projectPath) => {
 electron.ipcMain.handle("read-session", async (_, sessionPath) => {
   return readSession(sessionPath);
 });
+electron.ipcMain.handle("check-subagent-exists", async (_, sessionPath, agentId) => {
+  const dir = path.dirname(sessionPath);
+  const sessionId = path.basename(sessionPath, ".jsonl");
+  const subagentPath = path.join(dir, sessionId, "subagents", `agent-${agentId}.jsonl`);
+  try {
+    await promises.stat(subagentPath);
+    return true;
+  } catch {
+    return false;
+  }
+});
+electron.ipcMain.handle("read-subagent-session", async (_, sessionPath, agentId) => {
+  const dir = path.dirname(sessionPath);
+  const sessionId = path.basename(sessionPath, ".jsonl");
+  const subagentPath = path.join(dir, sessionId, "subagents", `agent-${agentId}.jsonl`);
+  return readSession(subagentPath);
+});
 electron.app.whenReady().then(() => {
   createWindow();
   electron.app.on("activate", function() {

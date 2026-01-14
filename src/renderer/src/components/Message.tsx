@@ -6,10 +6,10 @@ import { TaskResult } from './TaskResult'
 
 interface MessageProps {
   message: SessionMessage
+  sessionPath?: string | null
 }
 
-export function Message({ message }: MessageProps) {
-  // Handle system messages differently
+export function Message({ message, sessionPath = null }: MessageProps) {
   if (message.type === 'system') {
     return (
       <div className="message system">
@@ -37,12 +37,10 @@ export function Message({ message }: MessageProps) {
   const renderContent = (content: MessageContent | MessageContent[] | undefined) => {
     if (!content) return null
 
-    // Handle string content
     if (typeof content === 'string') {
       return <div className="text-content">{content}</div>
     }
 
-    // Handle array of content blocks
     if (Array.isArray(content)) {
       return content.map((block, index) => {
         if (typeof block === 'string') {
@@ -60,14 +58,20 @@ export function Message({ message }: MessageProps) {
         if (block.type === 'tool_use') {
           const toolBlock = block as ToolUseContent
           if (toolBlock.name === 'Task') {
-            return <TaskCall key={index} tool={toolBlock} />
+            return (
+              <TaskCall
+                key={index}
+                tool={toolBlock}
+                toolUseId={toolBlock.id}
+                sessionPath={sessionPath}
+              />
+            )
           }
           return <ToolCall key={index} tool={toolBlock} />
         }
 
         if (block.type === 'tool_result') {
           const resultBlock = block as ToolResultContent
-          // If this message has toolUseResult metadata, it's a Task result
           if (toolUseResult) {
             const resultContent = Array.isArray(resultBlock.content)
               ? resultBlock.content
@@ -78,10 +82,10 @@ export function Message({ message }: MessageProps) {
                 toolUseId={resultBlock.tool_use_id}
                 content={resultContent}
                 toolUseResult={toolUseResult}
+                sessionPath={sessionPath}
               />
             )
           }
-          // Regular tool result - skip for now (could add ToolResult component later)
           return null
         }
 
@@ -89,7 +93,6 @@ export function Message({ message }: MessageProps) {
       })
     }
 
-    // Handle single content block
     if (typeof content === 'object') {
       if (content.type === 'text') {
         return <div className="text-content">{(content as TextContent).text}</div>
@@ -100,7 +103,13 @@ export function Message({ message }: MessageProps) {
       if (content.type === 'tool_use') {
         const toolContent = content as ToolUseContent
         if (toolContent.name === 'Task') {
-          return <TaskCall tool={toolContent} />
+          return (
+            <TaskCall
+              tool={toolContent}
+              toolUseId={toolContent.id}
+              sessionPath={sessionPath}
+            />
+          )
         }
         return <ToolCall tool={toolContent} />
       }
@@ -114,6 +123,7 @@ export function Message({ message }: MessageProps) {
             toolUseId={resultContent.tool_use_id}
             content={contentArray}
             toolUseResult={toolUseResult}
+            sessionPath={sessionPath}
           />
         )
       }

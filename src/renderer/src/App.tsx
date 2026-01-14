@@ -1,6 +1,9 @@
+/// <reference path="../../preload/index.d.ts" />
 import { useState, useEffect, useCallback } from 'react'
 import { MessageList } from './components/MessageList'
-import { SessionMessage } from './types'
+import { SubagentPanel } from './components/SubagentPanel'
+import { SubagentProvider, useSubagent } from './contexts/SubagentContext'
+import { SessionMessage, ToolResultContent } from './types'
 
 interface Project {
   name: string
@@ -13,7 +16,7 @@ interface Session {
   mtime: number
 }
 
-function App() {
+function AppContent() {
   const [projects, setProjects] = useState<Project[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [messages, setMessages] = useState<SessionMessage[]>([])
@@ -21,6 +24,13 @@ function App() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
   const [sidebarWidth, setSidebarWidth] = useState(300)
   const [isResizing, setIsResizing] = useState(false)
+
+  const {
+    setAgentIdMap,
+    setSubagentAvailability,
+    subagentPanel,
+    closeSubagent
+  } = useSubagent()
 
   useEffect(() => {
     window.api.listProjects().then(setProjects)
@@ -55,6 +65,8 @@ function App() {
     setSelectedProject(project)
     setSelectedSession(null)
     setMessages([])
+    setAgentIdMap(new Map())
+    setSubagentAvailability(new Map())
     const sessionList = await window.api.listSessions(project.path)
     setSessions(sessionList)
   }
@@ -62,7 +74,36 @@ function App() {
   const handleSessionSelect = async (session: Session) => {
     setSelectedSession(session)
     const rawMessages = await window.api.readSession(session.path)
-    setMessages(rawMessages as SessionMessage[])
+    const sessionMessages = rawMessages as SessionMessage[]
+    setMessages(sessionMessages)
+
+    // Build agentIdMap from user messages with toolUseResult
+    const newAgentIdMap = new Map<string, string>()
+    for (const msg of sessionMessages) {
+      if (msg.type === 'user' && msg.toolUseResult?.agentId) {
+        // Find the corresponding tool_use_id from the message content
+        const content = msg.message?.content
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (typeof block === 'object' && block.type === 'tool_result') {
+              const resultBlock = block as ToolResultContent
+              newAgentIdMap.set(resultBlock.tool_use_id, msg.toolUseResult.agentId)
+            }
+          }
+        }
+      }
+    }
+    setAgentIdMap(newAgentIdMap)
+
+    // Check availability for all agentIds in parallel
+    const agentIds = [...new Set(newAgentIdMap.values())]
+    const availabilityChecks = await Promise.all(
+      agentIds.map(async (agentId) => {
+        const exists = await window.api.checkSubagentExists(session.path, agentId)
+        return [agentId, exists] as const
+      })
+    )
+    setSubagentAvailability(new Map(availabilityChecks))
   }
 
   const formatDate = (timestamp: number) => {
@@ -75,7 +116,6 @@ function App() {
   }
 
   const formatProjectName = (name: string) => {
-    // Convert -home-user-project to ~/project
     return name.replace(/^-home-[^-]+-/, '~/').replace(/-/g, '/')
   }
 
@@ -130,7 +170,7 @@ function App() {
         </div>
 
         {messages.length > 0 ? (
-          <MessageList messages={messages} />
+          <MessageList messages={messages} sessionPath={selectedSession?.path} />
         ) : (
           <div className="empty-state">
             {selectedProject
@@ -139,7 +179,24 @@ function App() {
           </div>
         )}
       </div>
+
+      {subagentPanel && (
+        <SubagentPanel
+          subagentType={subagentPanel.subagentType}
+          description={subagentPanel.description}
+          messages={subagentPanel.messages}
+          onClose={closeSubagent}
+        />
+      )}
     </div>
+  )
+}
+
+function App() {
+  return (
+    <SubagentProvider>
+      <AppContent />
+    </SubagentProvider>
   )
 }
 

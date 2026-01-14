@@ -1,12 +1,18 @@
+/// <reference path="../../../preload/index.d.ts" />
 import { useState } from 'react'
 import { ToolUseContent } from '../types'
+import { useSubagent } from '../contexts/SubagentContext'
 
 interface TaskCallProps {
   tool: ToolUseContent
+  toolUseId: string
+  sessionPath: string | null
 }
 
-export function TaskCall({ tool }: TaskCallProps) {
-  const [collapsed, setCollapsed] = useState(false) // Start expanded for tasks
+export function TaskCall({ tool, toolUseId, sessionPath }: TaskCallProps) {
+  const [collapsed, setCollapsed] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const { agentIdMap, subagentAvailability, openSubagent } = useSubagent()
 
   const input = tool.input as {
     description?: string
@@ -14,6 +20,27 @@ export function TaskCall({ tool }: TaskCallProps) {
     subagent_type?: string
     model?: string
     run_in_background?: boolean
+  }
+
+  const agentId = agentIdMap.get(toolUseId)
+  const isAvailable = agentId ? subagentAvailability.get(agentId) : false
+
+  const handleShowSubagent = async () => {
+    if (!agentId || !sessionPath) return
+    setLoading(true)
+    try {
+      const messages = await window.api.readSubagentSession(sessionPath, agentId)
+      openSubagent(
+        agentId,
+        input.subagent_type || 'Task',
+        input.description || '',
+        messages as import('../types').SessionMessage[]
+      )
+    } catch (error) {
+      console.error('Failed to load subagent session:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -58,6 +85,16 @@ export function TaskCall({ tool }: TaskCallProps) {
             <h4>Background</h4>
             <div className="task-value">Yes</div>
           </div>
+        )}
+        {agentId && (
+          <button
+            className="show-subagent-btn"
+            onClick={handleShowSubagent}
+            disabled={!isAvailable || loading}
+            title={!isAvailable ? 'Subagent session file not found' : undefined}
+          >
+            {loading ? 'Loading...' : 'Show Subagent Session'}
+          </button>
         )}
       </div>
     </div>
