@@ -30,6 +30,20 @@ npm run build
 npm run preview
 ```
 
+## Building Distributables
+
+```bash
+# Build for all platforms
+npm run build:dist
+
+# Platform-specific builds
+npm run build:mac    # macOS (.dmg, .zip)
+npm run build:win    # Windows (.exe installer, portable)
+npm run build:linux  # Linux (.AppImage)
+```
+
+Built packages are output to `dist/`.
+
 ## Requirements
 
 - Node.js

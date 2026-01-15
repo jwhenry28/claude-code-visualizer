@@ -10,10 +10,21 @@ Claude Session Viewer is an Electron desktop application for visualizing and deb
 
 ```bash
 npm run dev        # Start development server with hot reload
-npm run build      # Production build
+npm run build      # Production build (to out/)
 npm run preview    # Preview production build
 npm run typecheck  # TypeScript type checking (no emit)
 ```
+
+## Distribution Builds
+
+```bash
+npm run build:dist   # Build for all platforms
+npm run build:mac    # macOS (.dmg, .zip)
+npm run build:win    # Windows (.exe installer, portable)
+npm run build:linux  # Linux (.AppImage)
+```
+
+Distributables output to `dist/`.
 
 ## Architecture
 
